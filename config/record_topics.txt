@@ -1,0 +1,53 @@
+# v2 recording topic set. One topic per line.
+# Rationale changes vs v1:
+#  - camera_info added for every camera (was missing entirely)
+#  - NovAtel heading/velocity/INS topics added (were published, never recorded)
+#  - ZED imu added
+#  - ZED point cloud dropped: derivable offline from the recorded stereo
+#    pair; at native 1080p it alone would be >250 MB/s. (Not subscribing
+#    also means the wrapper skips computing it.)
+#  - /novatel/oem7/odom kept (was empty in v1 only because INS never aligned)
+
+# --- surround cameras (ArkCam) ---
+/camera/side_left/image_raw/compressed
+/camera/side_left/image_raw/camera_info
+/camera/rear_left/image_raw/compressed
+/camera/rear_left/image_raw/camera_info
+/camera/rear_mid/image_raw/compressed
+/camera/rear_mid/image_raw/camera_info
+/camera/rear_right/image_raw/compressed
+/camera/rear_right/image_raw/camera_info
+/camera/side_right/image_raw/compressed
+/camera/side_right/image_raw/camera_info
+
+# --- ZED 2i (wrapper 5.x topic scheme: <side>/color/<raw|rect>/image) ---
+/zed/zed_node/left/color/raw/image/compressed
+/zed/zed_node/left/color/raw/camera_info
+/zed/zed_node/right/color/raw/image/compressed
+/zed/zed_node/right/color/raw/camera_info
+/zed/zed_node/imu/data
+/zed/zed_node/odom
+
+# --- Ouster ---
+/ouster/points
+/ouster/imu
+
+# --- Blickfeld Qb2 ---
+/bf/points_raw
+
+# --- NovAtel OEM7 ---
+/novatel/oem7/fix
+/novatel/oem7/bestpos
+/novatel/oem7/bestvel
+/novatel/oem7/heading2
+/novatel/oem7/inspva
+/novatel/oem7/inspvax
+/novatel/oem7/insstdev
+/novatel/oem7/imu/data
+/novatel/oem7/imu/data_raw
+/novatel/oem7/odom
+
+# --- TF + health ---
+/tf
+/tf_static
+/diagnostics

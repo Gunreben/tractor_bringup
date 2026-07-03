@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>tractor_bringup</name>
+  <version>0.1.0</version>
+  <description>Bringup for the Vario700 tractor recording rig: one launch
+  entry point for all sensor drivers, the (single-source) TF tree, and the
+  recording topic set. Owns no driver code.</description>
+  <maintainer email="gunreben@wifa.uni-leipzig.de">Lorenz Gunreben</maintainer>
+  <license>Apache-2.0</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <exec_depend>robot_state_publisher</exec_depend>
+  <exec_depend>tf2_ros</exec_depend>
+  <exec_depend>vario700_sensorrig</exec_depend>
+  <exec_depend>tractor_multi_cam_publisher</exec_depend>
+  <exec_depend>ouster_ros</exec_depend>
+  <exec_depend>zed_wrapper</exec_depend>
+  <exec_depend>blickfeld_qb2_ros2_driver</exec_depend>
+  <exec_depend>novatel_oem7_driver</exec_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

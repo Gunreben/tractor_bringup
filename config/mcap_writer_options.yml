@@ -1,0 +1,4 @@
+# rosbag2 MCAP storage plugin options (ros2 bag record --storage-config-file)
+compression: "Zstd"
+compressionLevel: "Fast"
+
