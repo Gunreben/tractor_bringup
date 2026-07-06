@@ -17,7 +17,7 @@ from launch_ros.substitutions import FindPackageShare
 
 def generate_launch_description():
     vario700_pkg = FindPackageShare('vario700_sensorrig').find('vario700_sensorrig')
-    urdf_path = os.path.join(vario700_pkg, 'urdf', 'vario700_sensorrig.urdf')
+    urdf_path = os.path.join(vario700_pkg, 'urdf', 'vario700_sensorrig_kalibr.urdf')
     with open(urdf_path, 'r') as f:
         robot_description = f.read()
 
