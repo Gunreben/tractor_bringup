@@ -18,16 +18,20 @@ PERCEPTION=perception-demo.service
 RECORDING=ros2-recording-continuous.service
 SSD=/media/user/ext4_8tb_5
 
+env_get() {  # value of KEY in mode.env (quotes stripped, not sourced)
+    sed -n "s/^$1=//p" "$ENV_FILE" | tr -d '"'
+}
+
 status() {
     local mode="(none)"
-    [ -f "$ENV_FILE" ] && mode=$(. "$ENV_FILE"; echo "${TRACTOR_MODE:-?}")
+    [ -f "$ENV_FILE" ] && mode=$(env_get TRACTOR_MODE)
     echo "mode:        $mode"
     for u in $DRIVERS $PERCEPTION $RECORDING; do
         printf "  %-34s %-9s %s\n" "$u" "$(systemctl is-active $u 2>/dev/null || true)" \
             "$(systemctl is-enabled $u 2>/dev/null || true)"
     done
     local args=""
-    [ -f "$ENV_FILE" ] && args=$(. "$ENV_FILE"; echo "${BRINGUP_ARGS:-}")
+    [ -f "$ENV_FILE" ] && args=$(env_get BRINGUP_ARGS)
     echo "bringup:     tractor_bringup.launch.py ${args:-(default args)}"
     echo "launches:    $(pgrep -c -f '^/usr/bin/python3 /opt/ros/humble/bin/ros2 launch tractor_bringup' || true) (must be 0 or 1)"
     if mountpoint -q "$SSD"; then
@@ -42,7 +46,7 @@ status() {
 
 write_env() {  # mode, bringup args
     mkdir -p "$(dirname "$ENV_FILE")"
-    printf 'TRACTOR_MODE=%s\nBRINGUP_ARGS=%s\n' "$1" "$2" > "$ENV_FILE"
+    printf 'TRACTOR_MODE=%s\nBRINGUP_ARGS="%s"\n' "$1" "$2" > "$ENV_FILE"
 }
 
 [ "${1:-status}" = status ] && { status; exit 0; }
