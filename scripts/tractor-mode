@@ -1,0 +1,83 @@
+#!/bin/bash
+# Switch the tractor Orin between operating modes (persistent across reboots).
+#
+#   sudo tractor-mode demo     drivers (tf:=false, ZED depth off) + perception demo
+#   sudo tractor-mode record   drivers (full) + continuous MCAP recording to the 8 TB SSD
+#   sudo tractor-mode calib    drivers (full), no auto recording; record with calib-record
+#   sudo tractor-mode off      everything stopped and disabled
+#        tractor-mode status   current mode, services, recording disk
+#
+# The mode is stored in /etc/tractor/mode.env (read by the
+# ros2-publishers-boot drop-in) and in which units are enabled.
+set -euo pipefail
+
+ENV_FILE=/etc/tractor/mode.env
+SHARE=/mnt/ros2_ws/install/tractor_bringup/share/tractor_bringup
+DRIVERS=ros2-publishers-boot.service
+PERCEPTION=perception-demo.service
+RECORDING=ros2-recording-continuous.service
+SSD=/media/user/ext4_8tb_5
+
+status() {
+    local mode="(none)"
+    [ -f "$ENV_FILE" ] && mode=$(. "$ENV_FILE"; echo "${TRACTOR_MODE:-?}")
+    echo "mode:        $mode"
+    for u in $DRIVERS $PERCEPTION $RECORDING; do
+        printf "  %-34s %-9s %s\n" "$u" "$(systemctl is-active $u 2>/dev/null || true)" \
+            "$(systemctl is-enabled $u 2>/dev/null || true)"
+    done
+    echo "bringup:     $(systemctl show -p ExecStart $DRIVERS | grep -oE 'launch.py[^;]*' | head -1 | sed 's/launch.py *//; s/^$/(default args)/')"
+    echo "launches:    $(pgrep -c -f '^/usr/bin/python3 /opt/ros/humble/bin/ros2 launch tractor_bringup' || true) (must be 0 or 1)"
+    if mountpoint -q "$SSD"; then
+        echo "8 TB SSD:    mounted, $(df -h --output=avail "$SSD" | tail -1 | tr -d ' ') free"
+    else
+        echo "8 TB SSD:    NOT mounted (record mode needs it; log in on the desktop or plug it in)"
+    fi
+    if [ -f /mnt/calibration/.recording ]; then
+        echo "calib-record: RUNNING -> $(cat /mnt/calibration/.recording)"
+    fi
+}
+
+write_env() {  # mode, bringup args
+    mkdir -p "$(dirname "$ENV_FILE")"
+    printf 'TRACTOR_MODE=%s\nBRINGUP_ARGS=%s\n' "$1" "$2" > "$ENV_FILE"
+}
+
+[ "${1:-status}" = status ] && { status; exit 0; }
+[ "$(id -u)" = 0 ] || { echo "run with sudo: sudo tractor-mode $1"; exit 1; }
+
+case "$1" in
+    demo)
+        write_env demo "tf:=false zed_params_override:=$SHARE/config/zed_no_depth.yaml"
+        systemctl disable --now $RECORDING 2>/dev/null || true
+        systemctl daemon-reload
+        systemctl enable $DRIVERS $PERCEPTION
+        systemctl restart $DRIVERS
+        systemctl restart $PERCEPTION
+        ;;
+    record)
+        write_env record ""
+        systemctl disable --now $PERCEPTION 2>/dev/null || true
+        systemctl daemon-reload
+        systemctl enable $DRIVERS $RECORDING
+        systemctl restart $DRIVERS
+        mountpoint -q "$SSD" || echo "WARNING: $SSD not mounted - recording will fail its preflight until the SSD is there"
+        systemctl restart $RECORDING || true
+        ;;
+    calib)
+        write_env calib ""
+        systemctl disable --now $PERCEPTION $RECORDING 2>/dev/null || true
+        systemctl daemon-reload
+        systemctl enable $DRIVERS
+        systemctl restart $DRIVERS
+        echo "drivers up - record with: calib-record start [name]   /   calib-record stop"
+        ;;
+    off)
+        write_env off ""
+        systemctl disable --now $PERCEPTION $RECORDING $DRIVERS 2>/dev/null || true
+        ;;
+    *)
+        sed -n '2,12p' "$0"; exit 1 ;;
+esac
+sleep 3
+status

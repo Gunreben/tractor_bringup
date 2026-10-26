@@ -1,0 +1,28 @@
+# Perception demo stack (traversability_seg_ros2/docker/perception_jetson):
+# YOLO + segmentation + lidar objects + fusion + safety zones + Foxglove
+# bridge (ws://<tractor>:8765) in the perception-jetson:humble container.
+# Only in demo mode (tractor-mode demo), which also runs the bringup with
+# tf:=false (this stack publishes TF from its own calibration).
+[Unit]
+Description=Perception demo stack (Docker perception-jetson:humble, live_stack.sh)
+After=docker.service ros2-publishers-boot.service
+Requires=docker.service
+Wants=ros2-publishers-boot.service
+StartLimitIntervalSec=600
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=user
+ExecStartPre=-/usr/bin/docker rm -f perception
+ExecStart=/usr/bin/docker run --rm --name perception --runtime nvidia --network host --ipc host \
+  -v /mnt/perception/models:/root/ros2_ws/models:ro \
+  -v perception_trt_cache:/root/.cache \
+  -v /mnt/perception/docker/perception_jetson:/config:ro \
+  perception-jetson:humble /config/live_stack.sh foxglove:=true
+ExecStop=/usr/bin/docker stop -t 15 perception
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

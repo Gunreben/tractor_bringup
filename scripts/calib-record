@@ -1,0 +1,67 @@
+#!/bin/bash
+# Calibration recordings (calib mode): one uncompressed sqlite3 bag (.db3)
+# per start/stop on the internal NVMe, topics from config/calib_topics.txt.
+#
+#   calib-record start [name]   start, e.g. calib-record start msa_run1
+#   calib-record stop           stop and finalize (prints bag info)
+#   calib-record status
+#
+# Output: /mnt/calibration/<YYYY-MM-DD_HH-MM-SS>[_name]/bag/bag_0.db3 + metadata.yaml
+# Run as user (no sudo). Needs the drivers up (sudo tractor-mode calib).
+set -euo pipefail
+
+ROOT=/mnt/calibration
+STATE=$ROOT/.recording          # holds "<pid> <dir>" while recording
+SHARE=/mnt/ros2_ws/install/tractor_bringup/share/tractor_bringup
+
+ros_env() {
+    set +u
+    source /opt/ros/humble/setup.bash
+    source /mnt/ros2_ws/install/setup.bash
+    set -u
+    export ROS_DOMAIN_ID=0 RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+}
+
+case "${1:-status}" in
+    start)
+        if [ -f "$STATE" ]; then echo "already recording: $(cat "$STATE")"; exit 1; fi
+        systemctl is-active -q ros2-publishers-boot || {
+            echo "drivers not running - first: sudo tractor-mode calib"; exit 1; }
+        dir=$ROOT/$(date +%Y-%m-%d_%H-%M-%S)${2:+_$2}
+        mkdir -p "$dir"
+        ros_env
+        topics=$(grep -vE '^\s*(#|$)' "$SHARE/config/calib_topics.txt")
+        cp "$SHARE/config/calib_topics.txt" "$dir/"
+        # one file (no -d/-b split), no compression, 512 MB write cache
+        nohup ros2 bag record --storage sqlite3 --max-cache-size 536870912 \
+            -o "$dir/bag" $topics > "$dir/record.log" 2>&1 < /dev/null &
+        echo "$! $dir" > "$STATE"
+        sleep 3
+        if ! kill -0 "$!" 2>/dev/null; then
+            rm -f "$STATE"; echo "recorder died:"; tail -20 "$dir/record.log"; exit 1
+        fi
+        echo "recording -> $dir   (stop: calib-record stop)"
+        ;;
+    stop)
+        [ -f "$STATE" ] || { echo "not recording"; exit 1; }
+        read -r pid dir < "$STATE"
+        kill -INT "$pid" 2>/dev/null || true
+        for _ in $(seq 60); do kill -0 "$pid" 2>/dev/null || break; sleep 1; done
+        kill -0 "$pid" 2>/dev/null && { echo "recorder did not stop, killing"; kill -KILL "$pid"; }
+        rm -f "$STATE"
+        ros_env
+        ros2 bag info "$dir/bag" 2>/dev/null | grep -E "Files|Bag size|Duration|Messages" || true
+        echo "saved: $dir"
+        ;;
+    status)
+        if [ -f "$STATE" ]; then
+            read -r pid dir < "$STATE"
+            echo "RECORDING (pid $pid) -> $dir  $(du -sh "$dir" | cut -f1)"
+        else
+            echo "not recording"
+        fi
+        ls -1d $ROOT/20* 2>/dev/null | tail -5 | sed 's/^/  recent: /'
+        ;;
+    *)
+        sed -n '2,11p' "$0"; exit 1 ;;
+esac

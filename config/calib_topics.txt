@@ -1,0 +1,31 @@
+# Calibration recording (calib-record, sqlite3 .db3): raw sensor data for the
+# MSA calibration. Same names as record_topics.txt, without odom/diagnostics/
+# NovAtel solution topics. One topic per line.
+# --- surround cameras (ArkCam) ---
+/camera/side_left/image_raw/compressed
+/camera/side_left/image_raw/camera_info
+/camera/rear_left/image_raw/compressed
+/camera/rear_left/image_raw/camera_info
+/camera/rear_mid/image_raw/compressed
+/camera/rear_mid/image_raw/camera_info
+/camera/rear_right/image_raw/compressed
+/camera/rear_right/image_raw/camera_info
+/camera/side_right/image_raw/compressed
+/camera/side_right/image_raw/camera_info
+# --- ZED 2i stereo pair + IMU ---
+/zed/zed_node/left/color/raw/image/compressed
+/zed/zed_node/left/color/raw/camera_info
+/zed/zed_node/right/color/raw/image/compressed
+/zed/zed_node/right/color/raw/camera_info
+/zed/zed_node/imu/data
+# --- lidars ---
+/ouster/points
+/ouster/imu
+/bf/points_raw
+# --- NovAtel IMU / INS ---
+/novatel/oem7/imu/data
+/novatel/oem7/imu/data_raw
+/novatel/oem7/inspva
+/novatel/oem7/inspvax
+# --- static TF (current URDF, for reference) ---
+/tf_static
