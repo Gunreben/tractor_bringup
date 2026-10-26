@@ -1,5 +1,8 @@
 # tractor_bringup
 
+**Operating the rig (demo / record / calibration modes, systemd, configs,
+repos): [docs/OPERATIONS.md](docs/OPERATIONS.md).**
+
 Single entry point for the Vario700 tractor recording rig (dataset v2).
 Owns the launch composition, the TF policy, and the recording topic set —
 no driver code.

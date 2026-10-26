@@ -14,9 +14,13 @@ StartLimitBurst=5
 [Service]
 Type=simple
 User=user
+# optional: PERCEPTION_RIG=<rig yaml inside the container> selects the
+# calibration (empty = rig_vario700_msa_new_live.yaml), see docs/OPERATIONS.md
+EnvironmentFile=-/etc/tractor/perception.env
 ExecStartPre=-/usr/bin/docker rm -f perception
 ExecStart=/usr/bin/docker run --rm --name perception --runtime nvidia --network host --ipc host \
   --stop-signal SIGINT --stop-timeout 20 \
+  -e RIG=${PERCEPTION_RIG} \
   -v /mnt/perception/models:/root/ros2_ws/models:ro \
   -v perception_trt_cache:/root/.cache \
   -v /mnt/perception/docker/perception_jetson:/config:ro \
