@@ -45,6 +45,9 @@ def generate_launch_description():
                               description='RViz with the sensorrig config.'),
         DeclareLaunchArgument('camera_model', default_value='zed2i',
                               description='ZED camera model.'),
+        DeclareLaunchArgument('zed_params_override', default_value='',
+                              description='ZED wrapper parameter override file '
+                                          '(e.g. config/zed_no_depth.yaml).'),
         DeclareLaunchArgument('ouster_hostname', default_value='192.168.26.85',
                               description='Ouster sensor IP.'),
         DeclareLaunchArgument('oem7_ip_addr', default_value='192.168.26.100',
@@ -103,6 +106,7 @@ def generate_launch_description():
             ('publish_tf', 'false'),
             ('publish_map_tf', 'false'),
             ('publish_imu_tf', 'false'),
+            ('ros_params_override_path', LaunchConfiguration('zed_params_override')),
         ],
         condition=IfCondition(LaunchConfiguration('zed')),
     )

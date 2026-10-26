@@ -19,7 +19,8 @@ ros2 launch tractor_bringup tf.launch.py
 
 Arguments: `tf`, `arkcams`, `ouster`, `zed`, `blickfeld`, `novatel`
 (default `true`), `rviz` (default `false`), plus `camera_model`,
-`ouster_hostname`, `oem7_ip_addr`.
+`ouster_hostname`, `oem7_ip_addr`, and `zed_params_override` (ZED wrapper
+parameter file, e.g. `config/zed_no_depth.yaml` to switch depth off).
 
 ## TF policy
 

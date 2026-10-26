@@ -1,0 +1,9 @@
+# ZED without depth (demo: the perception stack only uses the left image and
+# needs the GPU that NEURAL depth takes). Disables everything that needs depth
+# (point cloud, positional tracking / odom, object detection, mapping).
+#   ros2 launch tractor_bringup tractor_bringup.launch.py \
+#     zed_params_override:=$(ros2 pkg prefix --share tractor_bringup)/config/zed_no_depth.yaml
+/**:
+  ros__parameters:
+    depth:
+      depth_mode: 'NONE'
