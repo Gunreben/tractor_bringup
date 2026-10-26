@@ -26,7 +26,9 @@ status() {
         printf "  %-34s %-9s %s\n" "$u" "$(systemctl is-active $u 2>/dev/null || true)" \
             "$(systemctl is-enabled $u 2>/dev/null || true)"
     done
-    echo "bringup:     $(systemctl show -p ExecStart $DRIVERS | grep -oE 'launch.py[^;]*' | head -1 | sed 's/launch.py *//; s/^$/(default args)/')"
+    local args=""
+    [ -f "$ENV_FILE" ] && args=$(. "$ENV_FILE"; echo "${BRINGUP_ARGS:-}")
+    echo "bringup:     tractor_bringup.launch.py ${args:-(default args)}"
     echo "launches:    $(pgrep -c -f '^/usr/bin/python3 /opt/ros/humble/bin/ros2 launch tractor_bringup' || true) (must be 0 or 1)"
     if mountpoint -q "$SSD"; then
         echo "8 TB SSD:    mounted, $(df -h --output=avail "$SSD" | tail -1 | tr -d ' ') free"

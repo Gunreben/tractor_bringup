@@ -16,11 +16,15 @@ Type=simple
 User=user
 ExecStartPre=-/usr/bin/docker rm -f perception
 ExecStart=/usr/bin/docker run --rm --name perception --runtime nvidia --network host --ipc host \
+  --stop-signal SIGINT --stop-timeout 20 \
   -v /mnt/perception/models:/root/ros2_ws/models:ro \
   -v perception_trt_cache:/root/.cache \
   -v /mnt/perception/docker/perception_jetson:/config:ro \
   perception-jetson:humble /config/live_stack.sh foxglove:=true
-ExecStop=/usr/bin/docker stop -t 15 perception
+# ros2 launch shuts down cleanly on SIGINT (Ctrl+C); docker kills after 20 s
+ExecStop=/usr/bin/docker stop perception
+TimeoutStopSec=30
+SuccessExitStatus=130 137 143
 Restart=on-failure
 RestartSec=10
 
