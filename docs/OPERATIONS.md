@@ -248,7 +248,7 @@ sudo systemctl daemon-reload && sudo systemctl restart ros2-publishers-boot
 | What | Setting | Why | Where |
 |---|---|---|---|
 | Bringup TF | `tf:=false` | the bringup's URDF is `vario700_sensorrig` **0.2.0 / kalibr**, whose `*_optical_frame`s are wrong (fixed in 0.3.0) and the images are stamped with those frames; the perception stack publishes TF from its own calibration instead (one source for TF, projection and camera_info) | `mode.env` |
-| Ouster static TF | `ouster_static_tf:=false` (driver's `/tf_static` remapped to `/ouster/tf_static_unused`) | ouster-ros always publishes `os_sensor→os_lidar` rotated 180° about z (from the sensor); **all** rig URDFs define it as identity and the calibrations assume that. With both on `/tf_static`, the whole sensor tree below `os_lidar` (all cameras in msa_new) flipped randomly → "all sensors tilted" (found 2026-10-27). The same double definition exists in record/calib mode (affects the lidar cloud only) | `mode.env` |
+| Ouster static TF | `ouster_static_tf:=false` (driver's `/tf_static` remapped to `/ouster/tf_static_unused`) **and** the perception stack's Foxglove bridge hides that topic (`topic_whitelist`) — Foxglove reads transforms from *every* `TFMessage` topic | ouster-ros always publishes `os_sensor→os_lidar` rotated 180° about z (from the sensor); **all** rig URDFs define it as identity and the calibrations assume that. With both on `/tf_static`, the whole sensor tree below `os_lidar` (all cameras in msa_new) flipped randomly → "all sensors tilted" (found 2026-10-27). The same double definition exists in record/calib mode (affects the lidar cloud only) | `mode.env` |
 | ZED depth | `depth_mode: NONE` | frees the GPU (segmentation 9.5 → 12 Hz); the stack only uses the left image. Disables ZED point cloud, odometry (`/zed/zed_node/odom`), object detection | `tractor_bringup/config/zed_no_depth.yaml` via `zed_params_override` |
 | Recording | off | — | `tractor-mode` |
 
@@ -398,7 +398,7 @@ ssh -t user@192.168.26.4 "sudo systemctl restart perception-demo"
 | no camera images | `ping 192.168.26.70` … `.74`; `journalctl -u ros2-publishers-boot | grep -i rtsp` |
 | ZED missing | USB cable; `journalctl -u ros2-publishers-boot | grep -i zed` ("Camera successfully opened") |
 | perception container restarts | `docker logs --tail 100 perception`; `journalctl -u perception-demo` |
-| sensors / cameras rotated or tilted in Foxglove 3D | two TF sources for the same frame. `ros2 topic info -v /tf_static` (in demo only `robot_state_publisher` may publish); demo `mode.env` must contain `tf:=false ouster_static_tf:=false` |
+| sensors / cameras rotated or tilted in Foxglove 3D | two TF sources for the same frame. In Foxglove: 3D panel → Transforms → `os_lidar` must show *History size 1*, rotation 0/0/0 (parent `os_sensor`). `ros2 topic info -v /tf_static`: in demo only `robot_state_publisher` may publish; demo `mode.env` must contain `tf:=false ouster_static_tf:=false`. Any other `tf2_msgs/TFMessage` topic is also used by Foxglove. Reconnect Foxglove after fixes (it keeps received transforms). `/ouster/points/filtered` (in `base_link`, transformed by ROS) is the reference |
 | boxes but no distances | TF/calibration: `/tf_static` from the container? (`tractor-mode status` must show `tf:=false` in demo); Ouster running? |
 | Foxglove cannot connect | laptop IP in 192.168.26.0/24? `ss -ltn | grep 8765` on the Jetson; demo mode active? |
 | recorder fails | `journalctl -u ros2-recording-continuous` — SSD mounted? ≥ 100 GB free? |
