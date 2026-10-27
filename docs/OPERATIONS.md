@@ -62,6 +62,7 @@ in the bringup arguments and what runs on top.
 |---|---|---|---|---|
 | Sensor drivers (`ros2-publishers-boot`) | yes | yes | yes | no |
 | Bringup TF (URDF from `vario700_sensorrig`) | **off** (`tf:=false`) — the perception stack publishes TF | on | on | – |
+| Ouster driver's own static TF (`os_sensor→os_lidar/os_imu`) | **off** (`ouster_static_tf:=false`) | on | on | – |
 | ZED depth | **off** (`depth_mode: NONE`) | NEURAL_LIGHT | NEURAL_LIGHT | – |
 | Perception container (`perception-demo`) | **yes** | no | no | no |
 | Continuous recording (`ros2-recording-continuous`) | no | **yes** (MCAP, 8 TB SSD) | no | no |
@@ -81,7 +82,7 @@ mode:        demo
   ros2-publishers-boot.service       active    enabled
   perception-demo.service            active    enabled
   ros2-recording-continuous.service  inactive  disabled
-bringup:     tractor_bringup.launch.py tf:=false zed_params_override:=.../zed_no_depth.yaml
+bringup:     tractor_bringup.launch.py tf:=false ouster_static_tf:=false zed_params_override:=.../zed_no_depth.yaml
 launches:    1 (must be 0 or 1)
 ```
 
@@ -172,6 +173,7 @@ source /opt/ros/humble/setup.bash && source /mnt/ros2_ws/install/setup.bash
 export ROS_DOMAIN_ID=0 RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
 ros2 launch tractor_bringup tractor_bringup.launch.py            # = record/calib
 ros2 launch tractor_bringup tractor_bringup.launch.py tf:=false \
+  ouster_static_tf:=false \
   zed_params_override:=/mnt/ros2_ws/install/tractor_bringup/share/tractor_bringup/config/zed_no_depth.yaml   # = demo
 ```
 Never run two bringups at once (two ZED / RTSP / Ouster clients). Check with
@@ -246,6 +248,7 @@ sudo systemctl daemon-reload && sudo systemctl restart ros2-publishers-boot
 | What | Setting | Why | Where |
 |---|---|---|---|
 | Bringup TF | `tf:=false` | the bringup's URDF is `vario700_sensorrig` **0.2.0 / kalibr**, whose `*_optical_frame`s are wrong (fixed in 0.3.0) and the images are stamped with those frames; the perception stack publishes TF from its own calibration instead (one source for TF, projection and camera_info) | `mode.env` |
+| Ouster static TF | `ouster_static_tf:=false` (driver's `/tf_static` remapped to `/ouster/tf_static_unused`) | ouster-ros always publishes `os_sensor→os_lidar` rotated 180° about z (from the sensor); **all** rig URDFs define it as identity and the calibrations assume that. With both on `/tf_static`, the whole sensor tree below `os_lidar` (all cameras in msa_new) flipped randomly → "all sensors tilted" (found 2026-10-27). The same double definition exists in record/calib mode (affects the lidar cloud only) | `mode.env` |
 | ZED depth | `depth_mode: NONE` | frees the GPU (segmentation 9.5 → 12 Hz); the stack only uses the left image. Disables ZED point cloud, odometry (`/zed/zed_node/odom`), object detection | `tractor_bringup/config/zed_no_depth.yaml` via `zed_params_override` |
 | Recording | off | — | `tractor-mode` |
 
@@ -395,6 +398,7 @@ ssh -t user@192.168.26.4 "sudo systemctl restart perception-demo"
 | no camera images | `ping 192.168.26.70` … `.74`; `journalctl -u ros2-publishers-boot | grep -i rtsp` |
 | ZED missing | USB cable; `journalctl -u ros2-publishers-boot | grep -i zed` ("Camera successfully opened") |
 | perception container restarts | `docker logs --tail 100 perception`; `journalctl -u perception-demo` |
+| sensors / cameras rotated or tilted in Foxglove 3D | two TF sources for the same frame. `ros2 topic info -v /tf_static` (in demo only `robot_state_publisher` may publish); demo `mode.env` must contain `tf:=false ouster_static_tf:=false` |
 | boxes but no distances | TF/calibration: `/tf_static` from the container? (`tractor-mode status` must show `tf:=false` in demo); Ouster running? |
 | Foxglove cannot connect | laptop IP in 192.168.26.0/24? `ss -ltn | grep 8765` on the Jetson; demo mode active? |
 | recorder fails | `journalctl -u ros2-recording-continuous` — SSD mounted? ≥ 100 GB free? |
