@@ -13,11 +13,11 @@ system/MIGRATION_v1_v2.md "TF tree (v2)".
 import os
 
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
-from launch.conditions import IfCondition
+from launch.actions import DeclareLaunchArgument, GroupAction, IncludeLaunchDescription
+from launch.conditions import IfCondition, UnlessCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
-from launch_ros.actions import Node
+from launch_ros.actions import Node, SetRemap
 from launch_ros.substitutions import FindPackageShare
 
 
@@ -45,6 +45,12 @@ def generate_launch_description():
                               description='RViz with the sensorrig config.'),
         DeclareLaunchArgument('camera_model', default_value='zed2i',
                               description='ZED camera model.'),
+        DeclareLaunchArgument('ouster_static_tf', default_value='true',
+                              description='Let the Ouster driver publish its own '
+                                          'os_sensor->os_lidar/os_imu static TF. Its '
+                                          'os_lidar is rotated 180 deg about z, all '
+                                          'rig URDFs use identity -> false when the '
+                                          'URDF is the TF source (demo mode).'),
         DeclareLaunchArgument('zed_params_override', default_value='',
                               description='ZED wrapper parameter override file '
                                           '(e.g. config/zed_no_depth.yaml).'),
@@ -82,12 +88,23 @@ def generate_launch_description():
         respawn_delay=10.0,
     )
 
-    ouster_include = IncludeLaunchDescription(
+    ouster_driver = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             os.path.join(_pkg('ouster_ros'), 'launch', 'driver.launch.py')),
         launch_arguments=[
             ('sensor_hostname', LaunchConfiguration('ouster_hostname')),
         ],
+    )
+    # ouster-ros always broadcasts os_sensor->os_lidar (180 deg yaw, from the
+    # sensor) and ->os_imu; with ouster_static_tf:=false that goes to an unused
+    # topic so the URDF's (identity) definition is the only one on /tf_static.
+    ouster_include = GroupAction(
+        [
+            SetRemap(src='/tf_static', dst='/ouster/tf_static_unused',
+                     condition=UnlessCondition(LaunchConfiguration('ouster_static_tf'))),
+            ouster_driver,
+        ],
+        scoped=True,
         condition=IfCondition(LaunchConfiguration('ouster')),
     )
 

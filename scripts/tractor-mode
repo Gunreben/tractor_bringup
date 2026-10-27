@@ -1,7 +1,7 @@
 #!/bin/bash
 # Switch the tractor Orin between operating modes (persistent across reboots).
 #
-#   sudo tractor-mode demo     drivers (tf:=false, ZED depth off) + perception demo
+#   sudo tractor-mode demo     drivers (tf:=false, no Ouster static TF, ZED depth off) + perception demo
 #   sudo tractor-mode record   drivers (full) + continuous MCAP recording to the 8 TB SSD
 #   sudo tractor-mode calib    drivers (full), no auto recording; record with calib-record
 #   sudo tractor-mode off      everything stopped and disabled
@@ -54,7 +54,7 @@ write_env() {  # mode, bringup args
 
 case "$1" in
     demo)
-        write_env demo "tf:=false zed_params_override:=$SHARE/config/zed_no_depth.yaml"
+        write_env demo "tf:=false ouster_static_tf:=false zed_params_override:=$SHARE/config/zed_no_depth.yaml"
         systemctl disable --now $RECORDING 2>/dev/null || true
         systemctl daemon-reload
         systemctl enable $DRIVERS $PERCEPTION
